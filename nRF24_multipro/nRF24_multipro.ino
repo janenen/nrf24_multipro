@@ -31,6 +31,7 @@
 #include <util/atomic.h>
 #include <EEPROM.h>
 #include "iface_nrf24l01.h"
+#include "HID-Project.h"
 
 
 // ############ Wiring ################
@@ -105,6 +106,7 @@ enum {
     PROTO_YD717,        // Cheerson CX-10 red (older version)/CX11/CX205/CX30, JXD389/390/391/393, SH6057/6043/6044/6046/6047, FY326Q7, WLToys v252 Pro/v343, XinXun X28/X30/X33/X39/X40
     PROTO_FQ777124,     // FQ777-124 pocket drone
     PROTO_E010,         // EAchine E010, NiHui NH-010, JJRC H36 mini
+    PROTO_USB,         // USB HID Gampad
     PROTO_END
 };
 
@@ -153,7 +155,7 @@ void loop()
     // reset / rebind
     if(reset || ppm[AUX8] > PPM_MAX_COMMAND) {
         reset = false;
-        selectProtocol();
+        selectProtocol();   
         NRF24L01_Reset();
         NRF24L01_Initialize();
         init_protocol();
@@ -199,6 +201,9 @@ void loop()
             break;
         case PROTO_FQ777124:
             timeout = process_FQ777124();
+            break;
+         case PROTO_USB:
+            timeout = process_USB();
             break;
     }
     // updates ppm values out of ISR
@@ -272,6 +277,10 @@ void selectProtocol()
     // Rudder right + Aileron left
     else if(ppm[RUDDER] > PPM_MAX_COMMAND && ppm[AILERON] < PPM_MIN_COMMAND)
         current_protocol = PROTO_H8_3D; // H8 mini 3D, H20 ...
+
+    // Rudder right
+    else if(ppm[RUDDER] > PPM_MAX_COMMAND)
+        current_protocol = PROTO_USB; // USB HID Gamepad
     
     // Elevator down + Aileron right
     else if(ppm[ELEVATOR] < PPM_MIN_COMMAND && ppm[AILERON] > PPM_MAX_COMMAND)
@@ -367,6 +376,9 @@ void init_protocol()
         case PROTO_FQ777124:
             FQ777124_init();
             FQ777124_bind();
+            break;
+        case PROTO_USB:
+            USB_init();
             break;
     }
 }
